@@ -22,16 +22,10 @@ class Card:
 
 
 class Deck:
-    def __init__(self):
+    def __init__(self, name):
         self.cards = []
-        self.read_cards()
-        # for i in self.cards:
-        #     print(*i.info())
-        self.remix_cards()
-        print()
-        print()
-        # for i in self.cards:
-        #     print(*i.info())
+        self.read_cards(name)
+        # self.remix_cards()
 
     def get_cards(self, n):
         if len(self.cards) > n:
@@ -42,8 +36,8 @@ class Deck:
     def remix_cards(self):
         random.shuffle(self.cards)
 
-    def read_cards(self):
-        csvfile = open('deck.csv', encoding="utf8")
+    def read_cards(self, name):
+        csvfile = open(name, encoding="utf8")
         reader = csv.reader(csvfile, delimiter=';')
         index = 0
         for line_dict in list(reader)[1:]:

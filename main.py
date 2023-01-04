@@ -1,12 +1,12 @@
 from deckpy import Deck, Card, Svoystvo
-from frontend import choose_obj, choose_int
+from frontend import choose_obj
 import random
 BASENCARDS = 6
 
 
 class Game:
     def __init__(self):
-        self.deck = Deck()
+        self.deck = Deck("test_deck.csv")
         self.players = [Player(1, self.deck.get_cards(BASENCARDS)),
                         Player(2, self.deck.get_cards(BASENCARDS))]
         self.players[0].printcard()
@@ -21,60 +21,73 @@ class Game:
         print("___________________подсчет очков_______________________")
         self.score_phase()
 
-    def add_animal(self, player, card):
-        card_id = player.hand.index(card)
-        lan = []
+    def add_animal(self, player):
+        card_id = player.hand.index(player.selected)
+        lan = player.animals.copy()
         lan.append(Animal())
         player.animals = lan
         del player.hand[card_id]
 
-    def add_property(self, player, an_id, card, prop_in_card):
+    def add_property(self, player, an, card, prop_in_card):
         card_id = player.hand.index(card)
+        an_id = player.animals.index(an)
         sv = player.animals[an_id].svoystva_all.copy()
         sv.append(prop_in_card)
         player.animals[an_id].svoystva_all = sv
         del player.hand[card_id]
 
-    def evo_phase(self):
-        self.players[0].plpass = True
-        self.players[1].plpass = True
-        raundcard = 1
-        while any(self.players[0].plpass, self.players[1].plpass):
-            if self.players[0].hand != [] and self.players[1].hand != []:
-                print(f"***** {raundcard} раунд выкладывания карт")
-            for playerid in range(2):
-                if self.players[playerid].plpass and self.players[playerid].hand != []:
-                    self.players[playerid].selected = choose_obj(self.players[playerid].printcard(),
-                                                                 self.players[playerid].hand,
-                                                                 f"0 - пас\nplayer{playerid + 1} введите номер карты:",
-                                                                 True)
-                    if self.players[playerid].selected != "":
+    def prop_chooses(self, player):
+        an = choose_obj([player.printanimals()],
+                        player.animals,
+                        "0 - пас\nвыберите номер животного:", True)
+        pr1 = player.selected.svoystva[0].name
+        pr2 = player.selected.svoystva[1].name if player.selected.svoystva[1] != "" else ""
+        prop_in_card = choose_obj([f"1 - {pr1}",
+                                   f"2 - {pr2}"],
+                                  player.selected.svoystva,
+                                  "0 - пас\nвыберите свойство:", True)
+        self.add_property(player, an,
+                          player.selected, prop_in_card)
 
-                        action = choose_int(["1 - выложить как животное",
-                                             "2 - выложить как свойство"],
-                                            "введите номер действия:")
-                        if action == 1:
-                            self.add_animal(self.players[playerid], self.players[playerid].selected)
-                        elif action == 2 and self.players[playerid].animals != []:
-                            print("выберите номер животного:")
-                            self.players[playerid].printanimals(self.players[playerid].animals)
-                            an_id = int(input()) - 1
-                            if self.players[playerid].selected.svoystva[1] != "":
-                                prop_in_card = choose_obj([f"1 - {self.players[playerid].selected.svoystva[0].name}",
-                                                           f"2 - {self.players[playerid].selected.svoystva[1].name}"],
-                                                        self.players[playerid].selected.svoystva,
-                                                          "0 - пас\nвыберите свойство:", True)
-                            else:
-                                prop_in_card = self.players[playerid].selected.svoystva[0]
-                            self.add_property(self.players[playerid], an_id,
-                                              self.players[playerid].selected, prop_in_card)
-                        else:
-                            self.players[playerid].plpass = False
-                    else:
-                        self.players[playerid].plpass = False
-                else:
-                    self.players[playerid].plpass = False
+    def act_choose(self, player):
+        player.selected = choose_obj(player.printcard(),
+                                     player.hand,
+                                     f"0 - пас\nplayer{player.number} введите номер карты:",
+                                     True)
+        if player.selected != "":  # игрок нажал пас
+            action = choose_obj(["1 - выложить как животное",
+                                 "2 - выложить как свойство"],
+                                [self.add_animal, self.prop_chooses],
+                                "введите номер действия:", True)
+            if action != "":
+                action(player)
+            else:  # игрок нажал пас
+                player.notpass = False
+        else:
+            player.notpass = False
+
+    def is_end_of_phase(self):
+        self.playerpasses = []
+        for player in self.players:
+            if player.notpass and player.hand != []:
+                self.playerpasses.append(True)
+
+            else:
+                self.playerpasses.append(False)
+                player.notpass = False
+        return any(self.playerpasses)
+
+    def evo_phase(self):
+        for i in self.players:
+            i.notpass = True
+        raundcard = 1
+        while self.is_end_of_phase():
+            print(f"***** {raundcard} раунд выкладывания карт")
+            for player in self.players:
+                if player.notpass:
+                    self.act_choose(player)
                 raundcard = raundcard + 1
+
 
     def eat_phase(self):
         self.eat_base = random.randint(1, 7) + 2
@@ -84,14 +97,12 @@ class Game:
 
             print(f"***** {raundkorm} раунд  кормления")
             for playerid in range(2):
-                if playerpasses[playerid] and self.eat_base != 0 and self.players[playerid].is_hungry_animals() != []:
-                    self.players[playerid].printanimals(self.players[playerid].is_hungry_animals())
-                    ans = int(input(f"player{playerid + 1} введите номер животного:")) - 1
-                    self.players[playerid].selected = choose_obj(self.players[playerid].printcard(),
-                                                                 self.players[playerid].hand,
-                                                                 f"player{playerid + 1} введите номер животного:")
-                    self.players[playerid].selected = self.players[playerid].animals[ans]
-                    self.players[playerid].selected.food += 1
+                player = self.players[playerid]
+                if playerpasses[playerid] and self.eat_base != 0 and player.is_hungry_animals() != []:
+                    player.selected = choose_obj(player.printanimals(),
+                                                 player.hand,
+                                                 f"player{playerid + 1} введите номер животного:")
+                    player.selected.food += 1
 
                 else:
                     playerpasses[playerid] = False
@@ -128,13 +139,13 @@ class Player:
         self.hand = hand
         self.animals = animals
         self.selected = None
-        self.plpass = False
+        self.notpass = False
 
-    def printanimals(self, animals):
+    def printanimals(self):
         lst = []
         n = 1
-        for i in animals:
-            lst.append(f"животное {n} со свойствами: {[j.name for j in i.svoystva_all]}")
+        for i in self.animals:
+            lst.append(str(f"животное {n} со свойствами: {', '.join([j.name for j in i.svoystva_all])}"))
             n += 1
         return lst
 
@@ -168,3 +179,40 @@ new = Game()
 # print("   карты 2 игрока:")
 # for i in new.player2.cards:
 #     print(*i.info())
+# 1
+# 1
+# 1
+# 1
+# 2
+# 1
+# 2
+# 1
+# 3
+# 1
+# 3
+# 1
+# 1
+# 2
+# 1
+# 1
+# 1
+# 2
+# 1
+# 1
+# 1
+# 2
+# 1
+# 1
+# 1
+# 2
+# 1
+# 1
+# 1
+# 2
+# 1
+# 1
+# 1
+# 2
+# 1
+# 1
+

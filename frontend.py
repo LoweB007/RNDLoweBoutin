@@ -7,8 +7,8 @@ def choose_obj(choose_list, obj_list, q, f=False):
     return obj_list[ans - 1]
 
 
-def choose_int(choose_list, q):
-    for i in choose_list:
-        print(i)
-    ans = int(input(q))
-    return ans
+# def choose_int(choose_list, q):
+#     for i in choose_list:
+#         print(i)
+#     ans = int(input(q))
+#     return ans
