@@ -7,6 +7,9 @@ class Svoystvo:
         self.name = name
         self.need_food = 0
 
+    def protection(self, animal, carnivore):
+        return
+
 
 class Card:
     def __init__(self, index, svoystva, out=False):
@@ -27,11 +30,48 @@ class Carnivore(Svoystvo):
         super().__init__(name)
         self.need_food = 1
 
+    def attack(self, animal, player, target, attaked_player):
+        if animal.food < animal.need_food_count():
+            attack_success = False
+            if self.detect_need_props(animal, target):
+                attack_success = True
+                print("атака успешна")
+            if attack_success:
+                attaked_player.animals.remove(target)
+                player.feed_animal_blue(animal)
+                player.feed_animal_blue(animal)
+
+    def detect_need_props(self, animal, target):
+        attack_props_types = set()
+        for prop in animal.svoystva_all:
+            attack_props_types.add(type(prop))
+        for prop in target.svoystva_all:
+            if prop.protection(animal, target):
+                if prop.counter_prop not in attack_props_types:
+                    print(f"нет свойства {prop.counter_prop}")
+                    return False
+
+        return True
+
 
 class Camouflage(Svoystvo):
     def __init__(self, name):
         super().__init__(name)
         self.need_food = 0
+        self.counter_prop = SharpVision
+
+    def protection(self, animal, carnivore):
+        return SharpVision
+
+
+class Big(Svoystvo):
+    def __init__(self, name):
+        super().__init__(name)
+        self.need_food = 1
+        self.counter_prop = Big
+
+    def protection(self, animal, carnivore):
+        return Big
 
 
 class SharpVision(Svoystvo):
