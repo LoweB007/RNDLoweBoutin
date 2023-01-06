@@ -5,6 +5,7 @@ import random
 class Svoystvo:
     def __init__(self, name):
         self.name = name
+        self.need_food = 0
 
 
 class Card:
@@ -21,6 +22,27 @@ class Card:
         return a.name, b
 
 
+class Carnivore(Svoystvo):
+    def __init__(self, name):
+        super().__init__(name)
+        self.need_food = 1
+
+
+class Camouflage(Svoystvo):
+    def __init__(self, name):
+        super().__init__(name)
+        self.need_food = 0
+
+
+class SharpVision(Svoystvo):
+    def __init__(self, name):
+        super().__init__(name)
+        self.need_food = 0
+
+
+# In[351]:
+
+
 class Deck:
     def __init__(self, name):
         self.cards = []
@@ -28,7 +50,7 @@ class Deck:
         # self.remix_cards()
 
     def get_cards(self, n):
-        if len(self.cards) > n:
+        if len(self.cards) >= n:
             res = self.cards[0:n]
             del self.cards[0:n]
             return res
@@ -44,10 +66,10 @@ class Deck:
             kol = int(line_dict[1])
             for _ in range(kol):
                 props = line_dict[0].split(' / ')
-                prop1 = Svoystvo(props[0])
+                prop1 = eval(props[0])(props[0])
                 prop2 = ""
                 if len(props) > 1:
-                    prop2 = Svoystvo(props[1])
+                    prop2 = eval(props[1])(props[1])
                 self.cards.append(Card(index, [prop1, prop2]))
                 index += 1
 
