@@ -1,20 +1,30 @@
 import csv
 import random
+import pygame
 
 
 class Svoystvo:
     def __init__(self, name):
         self.name = name
         self.need_food = 0
+        self.image = pygame.image.load("BigSv.png").convert_alpha()
+        self.rect = self.image.get_rect(center=(200, 200))
 
     def protection(self, animal, carnivore):
         return
 
 
-class Card:
-    def __init__(self, index, svoystva, out=False):
+class Card(pygame.sprite.Sprite):
+    def __init__(self, index, svoystva, picture, out=False):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.image.load("evolution.jpg").convert_alpha()
+        self.rect = self.image.get_rect(center=(200, 200))
         self.index = index
         self.svoystva = svoystva
+        self.picture = picture
+        self.x = 200
+        self.y = 200
+        self.dragged = False
         self.out = out
 
     def info(self):
@@ -69,12 +79,20 @@ class Big(Svoystvo):
         super().__init__(name)
         self.need_food = 1
         self.counter_prop = Big
+        self.image = pygame.image.load("BigSv.png").convert_alpha()
+        self.rect = self.image.get_rect(center=(200, 200))
 
     def protection(self, animal, carnivore):
         return Big
 
 
 class SharpVision(Svoystvo):
+    def __init__(self, name):
+        super().__init__(name)
+        self.need_food = 0
+
+
+class FatTissue(Svoystvo):
     def __init__(self, name):
         super().__init__(name)
         self.need_food = 0
@@ -110,7 +128,7 @@ class Deck:
                 prop2 = ""
                 if len(props) > 1:
                     prop2 = eval(props[1])(props[1])
-                self.cards.append(Card(index, [prop1, prop2]))
+                self.cards.append(Card(index, [prop1, prop2], line_dict[2]))
                 index += 1
 
     def info(self):

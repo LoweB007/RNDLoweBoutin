@@ -1,11 +1,11 @@
 ﻿
 Carnivore;2;;
 SharpVision;1;;
-Big;1;;
+Big / Carnivore;1;Big.png;
 Camouflage;2;;
 Carnivore;2;;
 SharpVision;1;;
-Big;1;;
+Big / Carnivore;1;Big.png;
 Camouflage;2;;
 Carnivore;2;;
 SharpVision;2;;
