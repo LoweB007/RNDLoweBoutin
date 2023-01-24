@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[348]:
-
-
 from deckpy import Deck, Svoystvo, Carnivore, Camouflage, SharpVision
 from frontend import choose_obj
 import random
@@ -15,12 +9,15 @@ BASENCARDS = 6
 
 # In[353]:
 
-
+# основной класс игры
 class Game:
     def __init__(self):
+        # загрузка колоды
         self.deck = Deck("deck.csv")
+        # инициализация игрока
         self.players = [Player(1),
                         Player(2)]
+        # раздача карт
         self.players[0].add_cards_from_deck(self.deck)
         self.players[1].add_cards_from_deck(self.deck)
         self.players[0].printcard()
@@ -108,35 +105,15 @@ class Game:
             pass
 
 
-# In[354]:
-
-
-# class Card:
-#     def __init__(self, index, svoystva, out=False):
-#         self.index = index
-#         self.svoystva = svoystva
-#         self.out = out
-#
-#     def info(self):
-#         a = self.svoystva[0]
-#         b = self.svoystva[1]
-#         if b != "":
-#             return a.name, b.name
-#         return a.name, b
-
-
-# In[428]:
-
-
-class Animal(pygame.sprite.Sprite):
+class Animal:
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self)
         self.image = pygame.image.load("evolution.jpg").convert_alpha()
         self.rect = self.image.get_rect(center=(600, 500))
         self.svoystva_all = []
         self.isalive = True
         self.food = 0
         self.needfood = 1
+        self.angle = 0
         self.svoystva_used_of_turn = []
         
     def need_food_count(self):
@@ -144,9 +121,6 @@ class Animal(pygame.sprite.Sprite):
         for svoystvo in self.svoystva_all:
             self.needfood = self.needfood+svoystvo.need_food
         return self.needfood
-
-
-# In[440]:
 
 
 class Player:
@@ -232,15 +206,44 @@ class Player:
                                   "0 - пас\nвыберите свойство:", True)
         self.add_property(an, prop_in_card)
 
+    def paint_animals(self, y, is_en):
+        for an in self.animals:
+            x = 600 + 140 * self.animals.index(an)
+
+            an.rect = an.image.get_rect(center=(x, y))
+            if is_en:
+                if an.angle != 180:
+                    an.image = pygame.transform.rotate(an.image, 180)
+                    an.angle = 180
+            else:
+                if an.angle == 180:
+                    an.image = pygame.transform.rotate(an.image, 180)
+                    an.angle = 0
+            display.blit(an.image, an.rect)
+
+            if an.svoystva_all:
+                ys = y + 60 if is_en else y - 60
+                for i in an.svoystva_all:
+                    if is_en:
+                        if i.angle != 180:
+                            i.image = pygame.transform.rotate(i.image, 180)
+                            i.angle = 180
+                        ys += 20
+                    else:
+                        ys -= 20
+                        if i.angle == 180:
+                            i.image = pygame.transform.rotate(i.image, 180)
+                            i.angle = 0
+                    i.rect = i.image.get_rect(center=(x, ys))
+                    display.blit(i.image, i.rect)
+
 
 class AddAnimalArea(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.image.load("add_animal.png").convert_alpha()
-        self.rect = self.image.get_rect(center=(400, 600))
+        self.rect = self.image.get_rect(center=(200, 750))
 
-
-# In[455]:
 
 def test_f():
     # тест фазы развтия
@@ -291,7 +294,6 @@ def test_f():
     # random.randint(1, 6) + 2
     print(feed_base)
 
-    # In[457]:
 
     # животное 1 игрока 1
     feed_base = pl1.feed_animal_red(pl1.animals[1], feed_base)
@@ -323,100 +325,109 @@ def test_f():
         if animal.food < animal.need_food_count():
             pl1.animals.remove(animal)
 
+def update_disp(act_pl, en_pl):
+    screen.fill((255, 255, 255))
+    display.blit(screen, (0, 0))
+    display.blit(act_pl.an_add.image, act_pl.an_add.rect)
+    for card in act_pl.hand:
+        display.blit(card.image, card.rect)
+    x = 200
+    for card in en_pl.hand:
+        display.blit(evo_card, evo_card.get_rect(center=(x + 500, 50)))
+        x += 120
+    act_pl.paint_animals(700, False)
+    en_pl.paint_animals(250, True)
 
-
-
+    # squares.draw(display)
+    pygame.display.update()
+    pygame.display.flip()
 
 
 pygame.init()
 W, H = 1800, 1000
 SW, SH = 90, 120
-display = pygame.display.set_mode((W, H))
+display = pygame.display.set_mode(
+    (W, H),
+    pygame.FULLSCREEN
+)
 screen = display.copy()
-
-squares = []
+evo_card = pygame.image.load("evolution.jpg").convert_alpha()
+squares = []  # массив карт
 rng = Random(5)
 deck = Deck("deck2.csv")
-rng.shuffle(deck.cards)
+rng.shuffle(deck.cards)  # перемешиваем
 # for card in deck.cards:
 #    print(card.info())
 
-pl1 = Player(1)
-pl1.add_cards_from_deck(deck)
-pl1.an_add = AddAnimalArea()
-pl2 = Player(2)
-pl2.add_cards_from_deck(deck)
-pl2.an_add = AddAnimalArea()
+pl1 = Player(1)  # инициализация певого игрока
+pl1.add_cards_from_deck(deck)  # раздача карт первому игроку
+pl1.an_add = AddAnimalArea()  # объявление области добавления животных первого игрока
+pl2 = Player(2)  # инициализация второго игрока
+pl2.add_cards_from_deck(deck)  # раздача карт первому игроку
+pl2.an_add = AddAnimalArea()  # объявление области добавления животных первого игрока
+# инициализация карты как объекта на экране
 for x in range(len(pl1.hand)):
-    pl1.hand[x].obj_rect = [pygame.Rect(x * 100 + 700, 800, SW, SH), False, "green", False]
+    pl1.hand[x].obj_rect = [pl1.hand[x].image.get_rect(center=(x * 100 + 700, 950)), False, "green", False]
     pl1.hand[x].x = x * 100 + 700
     pl1.hand[x].y = 800
 for x in range(len(pl2.hand)):
-    pl2.hand[x].obj_rect = [pygame.Rect(x * 100 + 700, 800, SW, SH), False, "green", False]
+    pl2.hand[x].obj_rect = [pl2.hand[x].image.get_rect(center=(x * 100 + 700, 950)), False, "green", False]
     pl2.hand[x].x = x * 100 + 700
     pl2.hand[x].y = 800
 n = 1
 
 while True:
 
-    act_pl, en_pl = (pl2, pl1) if n == -1 else (pl1, pl2)
-    squares = pygame.sprite.Group()
+    act_pl, en_pl = (pl2, pl1) if n == -1 else (pl1, pl2)  # определение действующего игрока и противника
+    squares = []
+    update_disp(act_pl, en_pl)
+    # загрузка изображений к картам
     for card in act_pl.hand:
         card.image = pygame.image.load(card.picture).convert_alpha()
         card.rect = card.obj_rect[0]
-        squares.add(card)
+        squares.append(card)
     e = pygame.event.wait()
     if e.type == pygame.QUIT or e.type == pygame.KEYUP and e.key == 27:
         break
     elif e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
+
         # for x in squares:
         #     x[3] = False
         for square in squares:
             if square.rect.collidepoint(e.pos):
+                # захват карты-объекта экрана
                 square.dragged = True
                 act_pl.selected = square
                 # square[3] = True
     elif e.type == pygame.MOUSEBUTTONUP and e.button == 1:
         for square in squares:
             if square.dragged:
+                # при перетягивании задаем ее позицию
                 square.dragged = False
                 square.rect.center = e.pos
+            if square.rect.colliderect(act_pl.an_add):
+                # создается животное
+                act_pl.add_animal()
+                n *= -1
+                print("добавлено животное")
+            for i in act_pl.animals:
+                if square.rect.colliderect(i.rect):
+                    # добавляется свойство
+                    act_pl.add_property(i, act_pl.selected.svoystva[0])
+                    n *= -1  # изменение текущего игрока
+                    print("добавлено свойство")
     elif e.type == pygame.MOUSEMOTION and e.buttons[0]:
         for square in squares:
             if square.dragged:
                 square.rect.center = e.pos
-            if square.rect.colliderect(act_pl.an_add):
-                act_pl.add_animal()
-            for i in act_pl.animals:
-                if square.rect.colliderect(i.rect):
-                    act_pl.add_property(i, act_pl.selected.svoystva[0])
-    elif e.type == pygame.KEYDOWN and e.key == pygame.K_SPACE:
-        n *= -1
-    else:
-        pass
-        # print(e)
-    screen.fill((255, 255, 255))
-    display.blit(screen, (0, 0))
-    display.blit(act_pl.an_add.image, act_pl.an_add.rect)
-    for card in act_pl.hand:
-        display.blit(card.image, card.rect)
-    for an in act_pl.animals:
-        x = 600 + 140 * act_pl.animals.index(an)
-        y = 700
-        an.rect = an.image.get_rect(center=(x, y))
-        display.blit(an.image, an.rect)
-        # y += 60
-        print(an.svoystva_all)
-        if an.svoystva_all:
-            for i in an.svoystva_all:
-                y -= 20
-                print(i)
-                i.rect = an.image.get_rect(center=(x, y))
-                display.blit(i.image, i.rect)
 
-    # squares.draw(display)
-    pygame.display.update()
-    pygame.display.flip()
+    elif e.type == pygame.KEYDOWN and e.key == pygame.K_SPACE:
+        # изменение текущего игрока
+        n *= -1
+        print("пробел")
+        # print(e)
+
+
 
 pygame.quit()
 

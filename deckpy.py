@@ -14,9 +14,8 @@ class Svoystvo:
         return
 
 
-class Card(pygame.sprite.Sprite):
+class Card:
     def __init__(self, index, svoystva, picture, out=False):
-        pygame.sprite.Sprite.__init__(self)
         self.image = pygame.image.load("evolution.jpg").convert_alpha()
         self.rect = self.image.get_rect(center=(200, 200))
         self.index = index
@@ -26,6 +25,7 @@ class Card(pygame.sprite.Sprite):
         self.y = 200
         self.dragged = False
         self.out = out
+        self.angle = 0
 
     def info(self):
         a = self.svoystva[0]
@@ -81,6 +81,7 @@ class Big(Svoystvo):
         self.counter_prop = Big
         self.image = pygame.image.load("BigSv.png").convert_alpha()
         self.rect = self.image.get_rect(center=(200, 200))
+        self.angle = 0
 
     def protection(self, animal, carnivore):
         return Big
