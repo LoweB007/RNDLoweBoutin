@@ -1,8 +1,9 @@
-from deckpy import Deck, Svoystvo, Carnivore, Camouflage, SharpVision
+from deckpy import Deck, Svoystvo, Carnivore, Camouflage, SharpVision, Food
 from frontend import choose_obj
 import random
 import pygame
 from random import shuffle, Random
+from time import sleep
 import csv
 BASENCARDS = 6
 
@@ -13,24 +14,30 @@ BASENCARDS = 6
 class Game:
     def __init__(self):
         # загрузка колоды
-        self.deck = Deck("deck.csv")
+        self.deck = Deck("deck2.csv")
         # инициализация игрока
+        # раздача карт
         self.players = [Player(1),
                         Player(2)]
-        # раздача карт
-        self.players[0].add_cards_from_deck(self.deck)
-        self.players[1].add_cards_from_deck(self.deck)
-        self.players[0].printcard()
-        self.players[1].printcard()
-        self.eat_base = 0
-        print("___________________фаза развития_______________________")
-        self.evo_phase()
-        print("___________________фаза кормления_______________________")
-        self.eat_phase()
-        print("___________________фаза вымирания_______________________")
-        self.dead_phase()
+        self.fat = pygame.sprite.LayeredUpdates()
+        self.food_base = pygame.sprite.LayeredUpdates()
+        while self.deck:
+            self.players_init()
+            print("___________________фаза развития_______________________")
+            self.evo_phase_pygame()
+            print("___________________фаза кормления_______________________")
+            self.eat_phase_pygame()
+            print("___________________фаза вымирания_______________________")
+            self.dead_phase()
         print("___________________подсчет очков_______________________")
         self.score_phase()
+
+    def players_init(self):  # инициализация певого и второго игрока
+        for i in self.players:
+            i.add_cards_from_deck(self.deck)  # раздача карт первому игроку
+            i.an_add = AddAnimalArea() # объявление области добавления животных первого игрока
+            for an in i.animals:
+                an.food = pygame.sprite.LayeredUpdates()
 
     def act_choose(self, player):
         player.selected = choose_obj(player.printcard(),
@@ -50,7 +57,7 @@ class Game:
             player.notpass = False
 
     def is_end_of_phase(self):
-        self.playerpasses = []
+        self.playerpasses = []ц
         for player in self.players:
             if player.notpass and player.hand != []:
                 self.playerpasses.append(True)
@@ -71,6 +78,70 @@ class Game:
                     self.act_choose(player)
                 raundcard = raundcard + 1
 
+    def card_init(self, pl):
+        for x in range(len(pl.hand)):
+            pl.hand[x].obj_rect = [pl.hand[x].image.get_rect(center=(x * 100 + 700, 950)), False, "green", False]
+            pl.hand[x].x = x * 100 + 700
+            pl.hand[x].y = 800
+
+    def evo_phase_pygame(self):
+        self.card_init(self.players[0])
+        self.card_init(self.players[1])
+        n = 1
+        while True:
+
+            act_pl, en_pl = (self.players[1], self.players[0]) if n == -1 else (self.players[0], self.players[1])
+            # определение действующего игрока и противника
+            squares = []
+
+            # загрузка изображений к картам
+            for card in act_pl.hand:
+                card.image = pygame.image.load(card.picture).convert_alpha()
+                card.rect = card.obj_rect[0]
+                squares.append(card)
+            update_disp(act_pl, en_pl, self.fat)
+            e = pygame.event.wait()
+            if e.type == pygame.QUIT or e.type == pygame.KEYUP and e.key == 27:
+                break
+            elif not act_pl.hand and not en_pl.hand:
+                break
+            elif e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
+
+                # for x in squares:
+                #     x[3] = False
+                for square in squares:
+                    if square.rect.collidepoint(e.pos):
+                        # захват карты-объекта экрана
+                        square.dragged = True
+                        act_pl.selected = square
+                        # square[3] = True
+            elif e.type == pygame.MOUSEBUTTONUP and e.button == 1:
+                for square in squares:
+                    if square.dragged:
+                        # при перетягивании задаем ее позицию
+                        square.dragged = False
+                        square.rect.center = e.pos
+                    if square.rect.colliderect(act_pl.an_add):
+                        # создается животное
+                        act_pl.add_animal()
+                        n *= -1
+                        update_disp(act_pl, en_pl, self.fat)
+                        taketurn(n)
+                        print("добавлено животное")
+                    for i in act_pl.animals:
+                        if square.rect.colliderect(i.rect):
+                            # добавляется свойство
+                            act_pl.add_property(i, act_pl.selected.svoystva[0])
+                            n *= -1  # изменение текущего игрока
+                            update_disp(act_pl, en_pl, self.fat)
+                            taketurn(n)
+                            print("добавлено свойство")
+            elif e.type == pygame.MOUSEMOTION and e.buttons[0]:
+                for square in squares:
+                    if square.dragged:
+                        square.rect.center = e.pos
+                # print(e)
+
     def eat_phase(self):
         self.eat_base = random.randint(1, 6) + 2
         playerpasses = [True, True]
@@ -89,15 +160,77 @@ class Game:
                     playerpasses[playerid] = False
             raundkorm = raundkorm + 1
 
+    def init_food(self):
+        self.food_base = pygame.sprite.LayeredUpdates()
+        y = 600
+        x = 1700
+        for i in range(random.randint(2, 8)):
+            self.food_base.add(Food(x + random.randint(0, 200), y + random.randint(0, 200), self.food_base, 5))
+
+    def eat_phase_pygame(self):
+        self.card_init(self.players[0])
+        self.card_init(self.players[1])
+        self.init_food()
+        n = 1
+        while True:
+
+            act_pl, en_pl = (self.players[1], self.players[0]) if n == -1 else (self.players[0], self.players[1])
+            # определение действующего игрока и противника
+            squares = self.food_base
+
+            # загрузка изображений к картам
+
+            update_disp(act_pl, en_pl, self.food_base)
+            e = pygame.event.wait()
+            if e.type == pygame.QUIT or e.type == pygame.KEYUP and e.key == 27:
+                print("конец фазы кормления")
+                break
+            elif not self.food_base or not (act_pl.is_hungry_animals() or en_pl.is_hungry_animals()):
+                print("конец фазы кормления")
+                break
+            elif e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
+
+                # for x in squares:
+                #     x[3] = False
+                for square in squares:
+                    if square.rect.collidepoint(e.pos):
+                        # захват карты-объекта экрана
+                        square.dragged = True
+                        act_pl.selected = square
+                        break
+                        # square[3] = True
+            elif e.type == pygame.MOUSEBUTTONUP and e.button == 1:
+                for square in squares:
+                    if square.dragged:
+                        # при перетягивании задаем ее позицию
+                        square.dragged = False
+                        square.rect.center = e.pos
+                    for i in act_pl.animals:
+                        if square.rect.colliderect(i.rect):
+                            # добавляется свойство
+                            act_pl.feed_animal_red(i, self.food_base, act_pl.selected)
+                            n *= -1  # изменение текущего игрока
+                            update_disp(act_pl, en_pl, self.food_base)
+                            taketurn(n)
+                            print(f"покормленно животное игрока {act_pl}")
+            elif e.type == pygame.MOUSEMOTION and e.buttons[0]:
+                for square in squares:
+                    if square.dragged:
+                        square.rect.center = e.pos
+
     def dead_phase(self):
         for pl in self.players:
             for animal in pl.animals:
-                if animal.food < animal.need_food_count():
+                if len(animal.food) < animal.need_food_count():
                     pl.animals.remove(animal)
         
     def score_phase(self):
         for pl in self.players:
-            print(pl)
+            score = 0
+            score += len(pl.animals)
+            for i in pl.animals:
+                score += len(i.svoystva_all)
+            print(score)
         print("Конец игры")
 
     def testprimer(self):
@@ -105,17 +238,21 @@ class Game:
             pass
 
 
-class Animal:
-    def __init__(self):
+class Animal(pygame.sprite.Sprite):
+    def __init__(self, group, layer):
         self.image = pygame.image.load("evolution.jpg").convert_alpha()
         self.rect = self.image.get_rect(center=(600, 500))
         self.svoystva_all = []
         self.isalive = True
-        self.food = 0
+        self.food = pygame.sprite.LayeredUpdates()
         self.needfood = 1
         self.angle = 0
         self.svoystva_used_of_turn = []
-        
+        self.dragged = False
+        self._layer = layer
+        self.layer_s = layer
+        pygame.sprite.Sprite.__init__(self, group)
+
     def need_food_count(self):
         self.needfood = 1
         for svoystvo in self.svoystva_all:
@@ -127,13 +264,13 @@ class Player:
     def __init__(self, number):
         self.number = number
         self.hand = []
-        self.animals = []
+        self.animals = pygame.sprite.LayeredUpdates()
         self.selected = None
         self.notpass = False
         self.an_add = ""
 
     def __str__(self):
-        return "карты игрока" + str(self.printcard()) + "\nживотные игрока" + str(self.printanimals())
+        return f"{self.number}"
     
     def printanimals(self):
         lst = []
@@ -155,39 +292,41 @@ class Player:
     def is_hungry_animals(self):
         ans = []
         for an in self.animals:
-            if an.food < an.needfood:
+            if len(an.food) < an.needfood:
                 ans.append(an)
         return ans
     
     def add_animal(self):
         card_id = self.hand.index(self.selected)
         lan = self.animals.copy()
-        lan.append(Animal())
+        lan.add(Animal(self.animals, 5))
         self.animals = lan
         del self.hand[card_id]
     
     def add_cards_from_deck(self, deck):
         if not self.animals:
-            count_animals = 6
+            count_animals = BASENCARDS
         else:
             count_animals = len(self.animals)+2
         for new_card in deck.get_cards(count_animals):
             self.hand.append(new_card)
+        print("игроку выданы карты")
         return
     
     def add_property(self, animal, prop_in_card):
         card_id = self.hand.index(self.selected)
-        animal_id = self.animals.index(animal)
-        svoysyvo = self.animals[animal_id].svoystva_all.copy()
+        svoysyvo = animal.svoystva_all.copy()
         svoysyvo.append(prop_in_card)
-        self.animals[animal_id].svoystva_all = svoysyvo
+        animal.svoystva_all = svoysyvo
         del self.hand[card_id]
         return
     
-    def feed_animal_red(self, animal, feed_base):
-        if feed_base > 0 and animal.need_food_count() > animal.food:
-            feed_base = feed_base - 1
-            animal.food = animal.food + 1
+    def feed_animal_red(self, animal, feed_base, food):
+        if feed_base and animal.need_food_count() > len(animal.food):
+            animal.food.add(food)
+            food.pos_for_an_x = animal.rect.x - food.rect.x
+            food.pos_for_an_y = animal.rect.y - food.rect.y
+            feed_base.remove(food)
         return feed_base
 
     def feed_animal_blue(self, animal):
@@ -207,8 +346,9 @@ class Player:
         self.add_property(an, prop_in_card)
 
     def paint_animals(self, y, is_en):
+        t = 0
         for an in self.animals:
-            x = 600 + 140 * self.animals.index(an)
+            x = 600 + 140 * t
 
             an.rect = an.image.get_rect(center=(x, y))
             if is_en:
@@ -236,6 +376,10 @@ class Player:
                             i.angle = 0
                     i.rect = i.image.get_rect(center=(x, ys))
                     display.blit(i.image, i.rect)
+
+            an.food.update(an.rect.x, an.rect.y, an.layer_s)
+            an.food.draw(display)
+            t += 1
 
 
 class AddAnimalArea(pygame.sprite.Sprite):
@@ -325,7 +469,8 @@ def test_f():
         if animal.food < animal.need_food_count():
             pl1.animals.remove(animal)
 
-def update_disp(act_pl, en_pl):
+
+def update_disp(act_pl, en_pl, food):
     screen.fill((255, 255, 255))
     display.blit(screen, (0, 0))
     display.blit(act_pl.an_add.image, act_pl.an_add.rect)
@@ -335,12 +480,30 @@ def update_disp(act_pl, en_pl):
     for card in en_pl.hand:
         display.blit(evo_card, evo_card.get_rect(center=(x + 500, 50)))
         x += 120
+    food.update([], [])
+    food.draw(display)
     act_pl.paint_animals(700, False)
     en_pl.paint_animals(250, True)
 
     # squares.draw(display)
     pygame.display.update()
     pygame.display.flip()
+
+
+def taketurn(n):
+    sleep(1)
+    display.fill((255, 255, 255))
+    display.blit(pygame.image.load("take_turn_img.png").convert_alpha(),
+                 pygame.image.load("take_turn_img.png").convert_alpha().get_rect(center=(1000, 500)))
+    pygame.display.update()
+    pygame.display.flip()
+    while True:
+        e = pygame.event.wait()
+        if e.type == pygame.KEYDOWN and e.key == pygame.K_SPACE:
+            # изменение текущего игрока
+            n *= -1
+            print("пробел")
+            return n
 
 
 pygame.init()
@@ -353,81 +516,11 @@ display = pygame.display.set_mode(
 screen = display.copy()
 evo_card = pygame.image.load("evolution.jpg").convert_alpha()
 squares = []  # массив карт
-rng = Random(5)
-deck = Deck("deck2.csv")
-rng.shuffle(deck.cards)  # перемешиваем
+
 # for card in deck.cards:
-#    print(card.info())
-
-pl1 = Player(1)  # инициализация певого игрока
-pl1.add_cards_from_deck(deck)  # раздача карт первому игроку
-pl1.an_add = AddAnimalArea()  # объявление области добавления животных первого игрока
-pl2 = Player(2)  # инициализация второго игрока
-pl2.add_cards_from_deck(deck)  # раздача карт первому игроку
-pl2.an_add = AddAnimalArea()  # объявление области добавления животных первого игрока
-# инициализация карты как объекта на экране
-for x in range(len(pl1.hand)):
-    pl1.hand[x].obj_rect = [pl1.hand[x].image.get_rect(center=(x * 100 + 700, 950)), False, "green", False]
-    pl1.hand[x].x = x * 100 + 700
-    pl1.hand[x].y = 800
-for x in range(len(pl2.hand)):
-    pl2.hand[x].obj_rect = [pl2.hand[x].image.get_rect(center=(x * 100 + 700, 950)), False, "green", False]
-    pl2.hand[x].x = x * 100 + 700
-    pl2.hand[x].y = 800
-n = 1
-
-while True:
-
-    act_pl, en_pl = (pl2, pl1) if n == -1 else (pl1, pl2)  # определение действующего игрока и противника
-    squares = []
-    update_disp(act_pl, en_pl)
-    # загрузка изображений к картам
-    for card in act_pl.hand:
-        card.image = pygame.image.load(card.picture).convert_alpha()
-        card.rect = card.obj_rect[0]
-        squares.append(card)
-    e = pygame.event.wait()
-    if e.type == pygame.QUIT or e.type == pygame.KEYUP and e.key == 27:
-        break
-    elif e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
-
-        # for x in squares:
-        #     x[3] = False
-        for square in squares:
-            if square.rect.collidepoint(e.pos):
-                # захват карты-объекта экрана
-                square.dragged = True
-                act_pl.selected = square
-                # square[3] = True
-    elif e.type == pygame.MOUSEBUTTONUP and e.button == 1:
-        for square in squares:
-            if square.dragged:
-                # при перетягивании задаем ее позицию
-                square.dragged = False
-                square.rect.center = e.pos
-            if square.rect.colliderect(act_pl.an_add):
-                # создается животное
-                act_pl.add_animal()
-                n *= -1
-                print("добавлено животное")
-            for i in act_pl.animals:
-                if square.rect.colliderect(i.rect):
-                    # добавляется свойство
-                    act_pl.add_property(i, act_pl.selected.svoystva[0])
-                    n *= -1  # изменение текущего игрока
-                    print("добавлено свойство")
-    elif e.type == pygame.MOUSEMOTION and e.buttons[0]:
-        for square in squares:
-            if square.dragged:
-                square.rect.center = e.pos
-
-    elif e.type == pygame.KEYDOWN and e.key == pygame.K_SPACE:
-        # изменение текущего игрока
-        n *= -1
-        print("пробел")
-        # print(e)
+#    print(card.info(
 
 
-
+new = Game()
 pygame.quit()
 

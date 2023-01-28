@@ -15,7 +15,7 @@ class Svoystvo:
 
 
 class Card:
-    def __init__(self, index, svoystva, picture, out=False):
+    def __init__(self, index, svoystva, picture):
         self.image = pygame.image.load("evolution.jpg").convert_alpha()
         self.rect = self.image.get_rect(center=(200, 200))
         self.index = index
@@ -24,7 +24,7 @@ class Card:
         self.x = 200
         self.y = 200
         self.dragged = False
-        self.out = out
+        self.out = False
         self.angle = 0
 
     def info(self):
@@ -134,3 +134,22 @@ class Deck:
 
     def info(self):
         return len(self.cards)
+
+
+class Food(pygame.sprite.Sprite):
+    def __init__(self, x, y, group, layer):
+        self.image = pygame.image.load("red_food.png").convert_alpha()
+        self.rect = self.image.get_rect(center=(x, y))
+        self.old_pos = (x, y)
+        self.pos_for_an_x = 0
+        self.pos_for_an_y = 0
+        self.dragged = False
+        self._layer = layer
+        pygame.sprite.Sprite.__init__(self, group)
+
+    def update(self, *args):
+        if args[0] and args[1]:
+            self.rect.x = args[0] - self.pos_for_an_x
+            self.rect.y = args[1] - self.pos_for_an_y
+            self._layer = args[2] - 1
+
