@@ -1,0 +1,9 @@
+lxml==4.6.2
+mcpi-e==0.3.2006.2
+Pillow==9.0.0
+py3minepi==0.0.1.1
+pygame==2.1.2
+PyQt5==5.15.3
+PyQt5-Qt==5.15.2
+PyQt5-sip==12.8.1
+screeninfo==0.8.1
