@@ -57,7 +57,7 @@ class Game:
             player.notpass = False
 
     def is_end_of_phase(self):
-        self.playerpasses = []ц
+        self.playerpasses = []
         for player in self.players:
             if player.notpass and player.hand != []:
                 self.playerpasses.append(True)
@@ -105,7 +105,13 @@ class Game:
                 break
             elif not act_pl.hand and not en_pl.hand:
                 break
-            elif e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
+            if e.type == pygame.MOUSEBUTTONUP and e.button == 3:
+                if act_pl.selected:
+                    # act_pl.selected.image = pygame.transform.rotate(act_pl.selected.image, 180)
+                    update_disp(act_pl, en_pl, self.fat)
+                    act_pl.selected.angle += 180
+                    print(f"карта {act_pl.selected} перевернута {act_pl.selected.angle}")
+            if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
 
                 # for x in squares:
                 #     x[3] = False
@@ -114,6 +120,7 @@ class Game:
                         # захват карты-объекта экрана
                         square.dragged = True
                         act_pl.selected = square
+                        break
                         # square[3] = True
             elif e.type == pygame.MOUSEBUTTONUP and e.button == 1:
                 for square in squares:
@@ -121,21 +128,27 @@ class Game:
                         # при перетягивании задаем ее позицию
                         square.dragged = False
                         square.rect.center = e.pos
+
                     if square.rect.colliderect(act_pl.an_add):
                         # создается животное
                         act_pl.add_animal()
                         n *= -1
                         update_disp(act_pl, en_pl, self.fat)
                         taketurn(n)
+                        act_pl.selected = ""
                         print("добавлено животное")
+                        break
                     for i in act_pl.animals:
                         if square.rect.colliderect(i.rect):
                             # добавляется свойство
-                            act_pl.add_property(i, act_pl.selected.svoystva[0])
+                            act_pl.add_property(i, act_pl.selected.svoystva[act_pl.selected.angle % 360 // 180])
                             n *= -1  # изменение текущего игрока
                             update_disp(act_pl, en_pl, self.fat)
                             taketurn(n)
+                            act_pl.selected = ""
                             print("добавлено свойство")
+                            break
+
             elif e.type == pygame.MOUSEMOTION and e.buttons[0]:
                 for square in squares:
                     if square.dragged:
@@ -177,7 +190,6 @@ class Game:
             act_pl, en_pl = (self.players[1], self.players[0]) if n == -1 else (self.players[0], self.players[1])
             # определение действующего игрока и противника
             squares = self.food_base
-
             # загрузка изображений к картам
 
             update_disp(act_pl, en_pl, self.food_base)
@@ -200,6 +212,7 @@ class Game:
                         break
                         # square[3] = True
             elif e.type == pygame.MOUSEBUTTONUP and e.button == 1:
+
                 for square in squares:
                     if square.dragged:
                         # при перетягивании задаем ее позицию
@@ -208,11 +221,35 @@ class Game:
                     for i in act_pl.animals:
                         if square.rect.colliderect(i.rect):
                             # добавляется свойство
+                            print(type(i))
                             act_pl.feed_animal_red(i, self.food_base, act_pl.selected)
                             n *= -1  # изменение текущего игрока
                             update_disp(act_pl, en_pl, self.food_base)
+                            act_pl.selected = ""
+                            en_pl.selected = ""
                             taketurn(n)
+
                             print(f"покормленно животное игрока {act_pl}")
+                            break
+
+                for an in act_pl.animals:
+                    if an.rect.collidepoint(e.pos):
+                        # захват карты-объекта экрана
+                        act_pl.targ = an
+                        break
+                for an in en_pl.animals:
+                    if an.rect.collidepoint(e.pos):
+                        # захват карты-объекта экрана
+                        en_pl.targ = an
+                        break
+                if act_pl.targ and en_pl.targ:
+                    if Carnivore in [type(i) for i in act_pl.targ.svoystva_all]:
+                        types_list = [type(i) for i in act_pl.targ.svoystva_all]
+                        ind = types_list.index(Carnivore)
+                        act_pl.targ.svoystva_all[ind].attack(act_pl.targ, act_pl, en_pl.targ, en_pl)
+                        en_pl.targ = ""
+                        act_pl.targ = ""
+                        taketurn(n)
             elif e.type == pygame.MOUSEMOTION and e.buttons[0]:
                 for square in squares:
                     if square.dragged:
@@ -232,10 +269,6 @@ class Game:
                 score += len(i.svoystva_all)
             print(score)
         print("Конец игры")
-
-    def testprimer(self):
-        for pl in self.players:
-            pass
 
 
 class Animal(pygame.sprite.Sprite):
@@ -268,6 +301,7 @@ class Player:
         self.selected = None
         self.notpass = False
         self.an_add = ""
+        self.targ = ""
 
     def __str__(self):
         return f"{self.number}"
@@ -324,14 +358,17 @@ class Player:
     def feed_animal_red(self, animal, feed_base, food):
         if feed_base and animal.need_food_count() > len(animal.food):
             animal.food.add(food)
+            print(type(food))
             food.pos_for_an_x = animal.rect.x - food.rect.x
             food.pos_for_an_y = animal.rect.y - food.rect.y
             feed_base.remove(food)
         return feed_base
 
     def feed_animal_blue(self, animal):
-        if animal.need_food_count() > animal.food:
-            animal.food = animal.food + 1
+        if animal.need_food_count() > len(animal.food):
+            x = animal.rect.x
+            y = animal.rect.y
+            animal.food.add(Food(x + random.randint(0, 70), y + random.randint(0, 150), animal.food, 5))
 
     def prop_chooses(self):
         an = choose_obj([self.printanimals()],
@@ -354,7 +391,7 @@ class Player:
             if is_en:
                 if an.angle != 180:
                     an.image = pygame.transform.rotate(an.image, 180)
-                    an.angle = 180
+                    an.angle += 180
             else:
                 if an.angle == 180:
                     an.image = pygame.transform.rotate(an.image, 180)
@@ -475,6 +512,8 @@ def update_disp(act_pl, en_pl, food):
     display.blit(screen, (0, 0))
     display.blit(act_pl.an_add.image, act_pl.an_add.rect)
     for card in act_pl.hand:
+        # print(card, card.angle)
+        card.image = pygame.transform.rotate(card.image, card.angle)
         display.blit(card.image, card.rect)
     x = 200
     for card in en_pl.hand:

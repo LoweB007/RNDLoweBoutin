@@ -38,10 +38,13 @@ class Card:
 class Carnivore(Svoystvo):
     def __init__(self, name):
         super().__init__(name)
+        self.image = pygame.image.load("carnivoreSv.png").convert_alpha()
+        self.rect = self.image.get_rect(center=(200, 200))
         self.need_food = 1
+        self.angle = 0
 
     def attack(self, animal, player, target, attaked_player):
-        if animal.food < animal.need_food_count():
+        if len(animal.food) < animal.need_food_count():
             attack_success = False
             if self.detect_need_props(animal, target):
                 attack_success = True
@@ -69,6 +72,9 @@ class Camouflage(Svoystvo):
         super().__init__(name)
         self.need_food = 0
         self.counter_prop = SharpVision
+        self.image = pygame.image.load("camoSv.png").convert_alpha()
+        self.rect = self.image.get_rect(center=(200, 200))
+        self.angle = 0
 
     def protection(self, animal, carnivore):
         return SharpVision
@@ -93,7 +99,7 @@ class SharpVision(Svoystvo):
         self.need_food = 0
 
 
-class FatTissue(Svoystvo):
+class Fattissue(Svoystvo):
     def __init__(self, name):
         super().__init__(name)
         self.need_food = 0
@@ -106,7 +112,7 @@ class Deck:
     def __init__(self, name):
         self.cards = []
         self.read_cards(name)
-        # self.remix_cards()
+        self.remix_cards()
 
     def get_cards(self, n):
         if len(self.cards) >= n:
@@ -116,6 +122,7 @@ class Deck:
 
     def remix_cards(self):
         random.shuffle(self.cards)
+        # random.sample(self.cards, len(self.cards))
 
     def read_cards(self, name):
         csvfile = open(name, encoding="utf8")
