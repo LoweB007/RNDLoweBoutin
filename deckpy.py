@@ -97,12 +97,18 @@ class SharpVision(Svoystvo):
     def __init__(self, name):
         super().__init__(name)
         self.need_food = 0
+        self.image = pygame.image.load("sharpSv.png").convert_alpha()
+        self.rect = self.image.get_rect(center=(200, 200))
+        self.angle = 0
 
 
 class Fattissue(Svoystvo):
     def __init__(self, name):
         super().__init__(name)
         self.need_food = 0
+        self.image = pygame.image.load("FatSv.png").convert_alpha()
+        self.rect = self.image.get_rect(center=(200, 200))
+        self.angle = 0
 
 
 # In[351]:
