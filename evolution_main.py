@@ -325,8 +325,12 @@ class Game:
             score += len(pl.animals)
             for i in pl.animals:
                 score += len(i.svoystva_all)
-            print(score)
+            pl.score = score
         print("Конец игры")
+
+    def get_score(self):
+        return self.players[0].score, self.players[1].score
+
 
 
 class Animal(pygame.sprite.Sprite):
@@ -353,6 +357,7 @@ class Animal(pygame.sprite.Sprite):
 
 class Player:
     def __init__(self, number):
+        self.score = 0
         self.number = number
         self.hand = []
         self.animals = pygame.sprite.LayeredUpdates()
@@ -572,7 +577,8 @@ squares = []  # массив карт
 # for card in deck.cards:
 #    print(card.info(
 
+if __name__ == '__main__':
+    new = Game()
+    pygame.quit()
 
-new = Game()
-pygame.quit()
 

@@ -83,6 +83,33 @@ class Start:
     def new_game(self):
         self.run = False
         new = Game()
+        name_player_1 = self.input_player_1.input_text
+        name_player_2 = self.input_player_2.input_text
+        score_1, score_2 = new.get_score()
+        connect = sqlite3.connect('top.db')
+        cursor = connect.cursor()
+        result = cursor.execute("""SELECT name FROM states""").fetchall()
+        if name_player_1 not in result:
+            cursor.execute(f"""INSERT INTO states(points, name) VALUES({score_1}, '{name_player_1}')""")
+            connect.commit()
+        else:
+            cursor.execute(f"""UPDATE states
+SET points = {score_1}
+WHERE name = '{name_player_1}'""")
+            connect.commit()
+        if name_player_2 not in result:
+            cursor.execute(f"""INSERT INTO states(points, name) VALUES({score_2}, '{name_player_2}')""")
+            connect.commit()
+        else:
+            cursor.execute(f"""UPDATE states
+        SET points = {score_2}
+        WHERE name = '{name_player_2}'""")
+            connect.commit()
+        cursor.execute(
+            f"""INSERT INTO games(name_1, name_2, score_1, score_2) VALUES('{name_player_1}', '{name_player_2}', {score_1}, {score_2})""")
+        connect.commit()
+        top = Top()
+        top.start()
 
     def start(self):
         self.run = True
